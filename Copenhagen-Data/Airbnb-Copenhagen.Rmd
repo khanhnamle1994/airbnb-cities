@@ -1,0 +1,139 @@
+---
+title: "Airbnb-Copenhagen"
+author: "James Le"
+date: "8/6/2018"
+output: html_document
+---
+
+# Introduction
+
+## My analyis is structured as follows:
+
+* Visualization of:
+    + Prices
+    + Reviews per Month
+    + Availability
+    + Minimum Stay
+    
+* Geo-Spatial Analysis
+    + Prices
+    + Reviews per Month
+    + Availability
+    + Minimum Stay
+
+```{r, echo = FALSE, warning = FALSE, include=FALSE}
+library(dplyr)
+library(zipcode)
+library(sp)
+library(rgdal)
+library(leaflet)
+library(GGally)
+library(ggthemes)
+library(ggplot2)
+library(plotly)
+```
+
+```{r}
+# reading in airbnb data
+copenhagen = read.csv("listings.csv")
+```
+
+```{r}
+copenhagen = copenhagen %>% 
+  mutate(illegal = ifelse(minimum_nights < 30 & room_type == "Entire home/apt", "Illegal", "Legal") ) %>% 
+  group_by(neighbourhood) %>% 
+  mutate(med.price = as.numeric(mean(price)))
+
+copenhagen = copenhagen %>% 
+  filter(minimum_nights <= 365)
+
+copenhagen$Occupany =  cut(copenhagen$availability_365, breaks = 12, 
+    labels=c("0-29","30-59","60-89", "90-119","120-149", "150-179", "180-209", "210-239", "240-269", "270-299", "300-329", "330-365"))
+```
+
+# Distributions 
+
+> To start things off, let's look at the distributions of Price, Reviews, Availability and Minimum Nights. These plots primarily investigate how the 11 neighbourhood differ when we compare the prices, reviews, and availability of each respectively.
+
+## 1. Prices
+
+> First up, let's take a look at how prices are distributed across the neighbourhoods. 
+
+```{r, warning = FALSE, echo=FALSE}
+# prices
+ggplot(copenhagen, aes(x = price, color = neighbourhood)) + 
+  geom_density() + 
+  xlim(0,10000) + ggtitle("Distribution of Prices") + theme_fivethirtyeight()
+```
+
+The next plot excludes outliers and takes a closer look.
+
+```{r, echo=FALSE, warning= FALSE}
+# zoomed in
+ggplot(copenhagen, aes(x = price, color = neighbourhood)) + 
+  geom_density() + 
+  xlim(0,2500) + ggtitle("Distribution of Prices - Without Outliers") + theme_fivethirtyeight()
+```
+
+> Next, I thought it was worth looking at the outliers. We can see that Vansle neighbourhood has the highest amount of price outliers. 
+
+```{r, echo=FALSE, warning= FALSE}
+# outliers
+ggplot(copenhagen, aes(x = price, color = neighbourhood)) + 
+  geom_density() + xlim(2500,10000) + ggtitle("Outliers") + theme_fivethirtyeight()
+```
+
+> In the figures we can see that the distributions are skewed to the right. Even after zooming it and cutting off the x-axis at 2500, we still see the distribution is skewed to the right. I decided to take the log of prices in order to fix this issue. This shows that Indre By is the priciest followed by Amager Vest, Frederiksberg, sterbro, and Vesterbro-Kongens Enghave. 
+
+```{r, echo=FALSE, warning= FALSE}
+# log of prices
+ggplot(copenhagen, aes(x = log(price), color = neighbourhood)) + 
+  geom_density() + xlim(5,9) +  
+  ggtitle("Distribution of Prices - Log Scale") +  theme_fivethirtyeight() 
+
+# box plot of log prices
+ggplot(copenhagen, aes(x = neighbourhood, log(price), color = neighbourhood)) +
+ ggtitle("Distribution of Price - Boxplot") +  theme_fivethirtyeight() + geom_violin() + geom_boxplot(aes(fill = neighbourhood, alpha = 0.2))
+```
+
+
+## 2. Reviews per month
+
+> The *reviews_per_month* variable gives us a good indication of how much activity goes on in each neighbourhood. The more reviews a listing has per month, the more it gets rented out.
+
+```{r, echo = FALSE, warning = FALSE}
+ggplot(copenhagen, aes(x = neighbourhood,  reviews_per_month, color = neighbourhood)) +
+ ggtitle("Reviews Per Month") +  theme_fivethirtyeight()  + geom_boxplot() + ylim(0,5) + 
+  geom_violin(aes(fill = neighbourhood), alpha = 0.2)
+```
+
+> When we zoom into the outlier region, we can see that only  handful of people have more than 8 reviews per month. 
+
+```{r, echo = FALSE, warning = FALSE}
+ggplot(copenhagen, aes(x = neighbourhood, reviews_per_month, color = neighbourhood)) +
+ ggtitle("Reviews Per Month") +  theme_fivethirtyeight()  + geom_boxplot() + ylim(5,12) + 
+  geom_violin(aes(fill = neighbourhood), alpha = 0.2)
+```
+
+## 3. Availability
+
+> A quick look at estimated occupancy rates for Entire Home rentals in Copenhagen shows us that close to 15,000 entire homes are being rented for less than a month.
+
+```{r, echo = FALSE, warning = FALSE}
+ggplot(copenhagen, aes(x = availability_365, fill = neighbourhood)) + 
+  geom_histogram(binwidth = 150, position = "dodge") + ggtitle("Distribution of Availability")  +  theme_fivethirtyeight() + geom_freqpoly(aes(color = neighbourhood))
+```
+
+```{r, echo = FALSE, warning = FALSE}
+ggplot(copenhagen, aes(x = availability_365, color = neighbourhood)) + 
+  geom_density() + ggtitle("Distribution of Availability")  +  theme_fivethirtyeight()
+```
+
+```{r, echo = FALSE, warning = FALSE}
+entire.homes = copenhagen %>% filter(room_type == "Entire home/apt")
+
+ggplot(entire.homes, aes(x = Occupany, color = neighbourhood)) + geom_bar() + theme_fivethirtyeight() + 
+  ggtitle("Availibility") + geom_density()
+```
+
+## 4. Minimum Nights
