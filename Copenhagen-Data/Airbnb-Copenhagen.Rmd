@@ -7,7 +7,7 @@ output: html_document
 
 # Introduction
 
-## My analyis is structured as follows:
+My analyis is structured as follows:
 
 * Visualization of:
     + Prices
@@ -47,13 +47,14 @@ copenhagen = copenhagen %>%
 copenhagen = copenhagen %>% 
   filter(minimum_nights <= 365)
 
-copenhagen$Occupany =  cut(copenhagen$availability_365, breaks = 12, 
+# Split availability dates into a new category called "Occupancy" - which labels months occupied
+copenhagen$Occupancy =  cut(copenhagen$availability_365, breaks = 12, 
     labels=c("0-29","30-59","60-89", "90-119","120-149", "150-179", "180-209", "210-239", "240-269", "270-299", "300-329", "330-365"))
 ```
 
 # Distributions 
 
-> To start things off, let's look at the distributions of Price, Reviews, Availability and Minimum Nights. These plots primarily investigate how the 11 neighbourhood differ when we compare the prices, reviews, and availability of each respectively.
+To start things off, let's look at the distributions of Price, Reviews, Availability and Minimum Nights. These plots primarily investigate how the 11 neighbourhood differ when we compare the prices, reviews, and availability of each respectively.
 
 ## 1. Prices
 
